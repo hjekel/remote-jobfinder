@@ -1,84 +1,71 @@
-"""Working Nomads scraper — HTML scraping."""
+"""Working Nomads scraper — uses their public JSON API."""
 
 import hashlib
 import logging
 from datetime import datetime
 
 import httpx
-from bs4 import BeautifulSoup
 
 from app.models import upsert_jobs, log_scrape
 from app.scorer import calculate_score, categorise_job, detect_location_type, detect_contract_type
 
 logger = logging.getLogger(__name__)
 
-WORKINGNOMADS_URL = "https://www.workingnomads.com/jobs"
+WORKINGNOMADS_API = "https://www.workingnomads.com/api/exposed_jobs/"
 
 
 async def scrape_workingnomads() -> int:
-    """Fetch jobs from Working Nomads by scraping HTML.
+    """Fetch jobs from Working Nomads JSON API.
 
     Returns:
         Number of jobs scraped.
     """
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
-                WORKINGNOMADS_URL,
-                headers={"User-Agent": "RemoteJobFinder/1.0"},
+                WORKINGNOMADS_API,
+                headers={"User-Agent": "OpportunityFinder/2.0"},
             )
             resp.raise_for_status()
+            data = resp.json()
 
-        soup = BeautifulSoup(resp.text, "lxml")
         jobs = []
 
-        # Working Nomads lists jobs in table rows or divs
-        listings = soup.select(".job-item, .job-listing, tr.job, .jobs-list a")
-        if not listings:
-            # Try broader selectors
-            listings = soup.select("a[href*='/jobs/']")
+        for item in data:
+            title = item.get("title", "")
+            company = item.get("company_name", "")
+            url = item.get("url", "")
+            location = item.get("location", "Remote")
+            description = item.get("description", "")
+            tags = item.get("tags", "")
+            category_name = item.get("category_name", "")
+            posted = item.get("pub_date", "")
 
-        for listing in listings:
-            if listing.name == "a":
-                url = listing.get("href", "")
-                title = listing.get_text(strip=True)[:100]
-                link = listing
-            else:
-                link = listing.select_one("a[href]")
-                if not link:
-                    continue
-                url = link.get("href", "")
-                title_el = listing.select_one("h3, h4, .title, .position")
-                title = title_el.get_text(strip=True) if title_el else link.get_text(strip=True)[:100]
-
-            if not url:
+            if not url or not title:
                 continue
-            if not url.startswith("http"):
-                url = f"https://www.workingnomads.com{url}"
-
-            company_el = listing.select_one(".company, .employer") if listing.name != "a" else None
-            company = company_el.get_text(strip=True) if company_el else ""
 
             job_id = hashlib.md5(f"workingnomads-{url}".encode()).hexdigest()
-            score = calculate_score(title, "")
-            category = categorise_job(title, "")
-            location_type = detect_location_type(title, "")
-            contract_type = detect_contract_type(title, "")
+
+            full_text = f"{title} {description} {tags} {category_name}"
+            score = calculate_score(title, full_text)
+            category = categorise_job(title, full_text)
+            location_type = detect_location_type(title, full_text, location)
+            contract_type = detect_contract_type(title, full_text)
 
             jobs.append({
                 "id": job_id,
                 "title": title,
                 "company": company,
-                "location": "Remote",
+                "location": location[:200] if location else "Remote",
                 "url": url,
-                "description": "",
+                "description": description[:2000],
                 "source": "WorkingNomads",
                 "job_type": "Remote",
                 "category": category,
                 "location_type": location_type,
                 "contract_type": contract_type,
                 "score": score,
-                "posted_at": "",
+                "posted_at": posted,
                 "scraped_at": datetime.utcnow().isoformat(),
             })
 

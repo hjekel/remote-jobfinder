@@ -1,87 +1,112 @@
-"""Remote.co scraper — HTML scraping."""
+"""Himalayas.app scraper — replaces Remote.co (which blocks all non-browser requests).
+
+Uses the Himalayas public JSON API for remote job listings.
+"""
 
 import hashlib
 import logging
 from datetime import datetime
 
 import httpx
-from bs4 import BeautifulSoup
 
 from app.models import upsert_jobs, log_scrape
 from app.scorer import calculate_score, categorise_job, detect_location_type, detect_contract_type
 
 logger = logging.getLogger(__name__)
 
-REMOTECO_URL = "https://remote.co/remote-jobs/"
+HIMALAYAS_API = "https://himalayas.app/jobs/api"
 
 
 async def scrape_remoteco() -> int:
-    """Fetch jobs from Remote.co by scraping HTML.
+    """Fetch jobs from Himalayas.app JSON API.
+
+    Note: Function name kept as scrape_remoteco for backward compatibility
+    in main.py, but now sources from Himalayas.app.
 
     Returns:
         Number of jobs scraped.
     """
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            resp = await client.get(
-                REMOTECO_URL,
-                headers={"User-Agent": "RemoteJobFinder/1.0"},
-            )
-            resp.raise_for_status()
+        all_jobs = []
+        offset = 0
+        limit = 50
+        max_pages = 4  # 200 jobs max to be polite
 
-        soup = BeautifulSoup(resp.text, "lxml")
-        jobs = []
+        async with httpx.AsyncClient(timeout=30) as client:
+            for _ in range(max_pages):
+                resp = await client.get(
+                    HIMALAYAS_API,
+                    params={"limit": limit, "offset": offset},
+                    headers={"User-Agent": "OpportunityFinder/2.0"},
+                )
+                resp.raise_for_status()
+                data = resp.json()
 
-        # Remote.co lists jobs in anchor tags with class 'card'
-        job_cards = soup.select("a.card")
-        if not job_cards:
-            # Fallback: try other common selectors
-            job_cards = soup.select(".job_listing a, .job-listing a, article a")
+                jobs_data = data.get("jobs", [])
+                if not jobs_data:
+                    break
 
-        for card in job_cards:
-            url = card.get("href", "")
-            if not url or "/remote-jobs/" not in url:
-                continue
-            if not url.startswith("http"):
-                url = f"https://remote.co{url}"
+                for item in jobs_data:
+                    title = item.get("title", "")
+                    company = item.get("companyName", "")
+                    description = item.get("description", "") or ""
+                    categories = ", ".join(item.get("categories", []))
+                    seniority = item.get("seniority", "")
 
-            title_el = card.select_one("h3, .position, .job-title, strong")
-            title = title_el.get_text(strip=True) if title_el else card.get_text(strip=True)[:100]
+                    # Build URL from slug
+                    slug = item.get("slug", "")
+                    company_slug = item.get("companySlug", "")
+                    if slug and company_slug:
+                        url = f"https://himalayas.app/companies/{company_slug}/jobs/{slug}"
+                    elif item.get("applicationLink"):
+                        url = item["applicationLink"]
+                    else:
+                        url = f"https://himalayas.app/jobs/{slug}" if slug else ""
 
-            company_el = card.select_one(".company, .employer, p")
-            company = company_el.get_text(strip=True) if company_el else ""
+                    if not url or not title:
+                        continue
 
-            job_id = hashlib.md5(f"remoteco-{url}".encode()).hexdigest()
-            score = calculate_score(title, "")
-            category = categorise_job(title, "")
-            location_type = detect_location_type(title, "")
-            contract_type = detect_contract_type(title, "")
+                    location = ", ".join(item.get("locationRestrictions", [])) or "Remote"
+                    posted = item.get("pubDate", "") or item.get("updatedAt", "")
 
-            jobs.append({
-                "id": job_id,
-                "title": title,
-                "company": company,
-                "location": "Remote",
-                "url": url,
-                "description": "",
-                "source": "Remote.co",
-                "job_type": "Remote",
-                "category": category,
-                "location_type": location_type,
-                "contract_type": contract_type,
-                "score": score,
-                "posted_at": "",
-                "scraped_at": datetime.utcnow().isoformat(),
-            })
+                    job_id = hashlib.md5(f"himalayas-{slug or url}".encode()).hexdigest()
 
-        if jobs:
-            await upsert_jobs(jobs)
+                    full_text = f"{title} {description[:1000]} {categories} {seniority}"
+                    score = calculate_score(title, full_text)
+                    category = categorise_job(title, full_text)
+                    location_type = detect_location_type(title, full_text, location)
+                    contract_type = detect_contract_type(title, full_text)
 
-        await log_scrape("Remote.co", len(jobs))
-        logger.info(f"Remote.co: scraped {len(jobs)} jobs")
-        return len(jobs)
+                    all_jobs.append({
+                        "id": job_id,
+                        "title": title,
+                        "company": company,
+                        "location": location[:200],
+                        "url": url,
+                        "description": description[:2000],
+                        "source": "Himalayas",
+                        "job_type": "Remote",
+                        "category": category,
+                        "location_type": location_type,
+                        "contract_type": contract_type,
+                        "score": score,
+                        "posted_at": posted,
+                        "scraped_at": datetime.utcnow().isoformat(),
+                    })
+
+                offset += limit
+                total = data.get("totalCount", 0)
+                if offset >= total:
+                    break
+
+        if all_jobs:
+            await upsert_jobs(all_jobs)
+
+        await log_scrape("Himalayas", len(all_jobs))
+        logger.info(f"Himalayas: scraped {len(all_jobs)} jobs")
+        return len(all_jobs)
 
     except Exception as e:
-        logger.error(f"Remote.co scraper error: {e}")
-        await log_scrape("Remote.co", 0, status="error", error=str(e))
+        logger.error(f"Himalayas scraper error: {e}")
+        await log_scrape("Himalayas", 0, status="error", error=str(e))
         return 0

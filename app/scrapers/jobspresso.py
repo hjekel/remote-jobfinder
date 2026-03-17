@@ -1,4 +1,4 @@
-"""Jobspresso scraper — HTML scraping."""
+"""Jobspresso scraper — uses WP Job Manager AJAX endpoint."""
 
 import hashlib
 import logging
@@ -12,81 +12,115 @@ from app.scorer import calculate_score, categorise_job, detect_location_type, de
 
 logger = logging.getLogger(__name__)
 
-JOBSPRESSO_URL = "https://jobspresso.co/remote-work/"
+JOBSPRESSO_AJAX = "https://jobspresso.co/jm-ajax/get_listings/"
 
 
 async def scrape_jobspresso() -> int:
-    """Fetch jobs from Jobspresso by scraping HTML.
+    """Fetch jobs from Jobspresso via WP Job Manager AJAX.
 
     Returns:
         Number of jobs scraped.
     """
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-            resp = await client.get(
-                JOBSPRESSO_URL,
-                headers={"User-Agent": "RemoteJobFinder/1.0"},
-            )
-            resp.raise_for_status()
+        all_jobs = []
+        page = 1
+        max_pages = 5  # Limit to first 5 pages to be polite
 
-        soup = BeautifulSoup(resp.text, "lxml")
-        jobs = []
+        async with httpx.AsyncClient(timeout=30) as client:
+            while page <= max_pages:
+                resp = await client.post(
+                    JOBSPRESSO_AJAX,
+                    data={
+                        "per_page": 25,
+                        "page": page,
+                        "show_pagination": "false",
+                    },
+                    headers={
+                        "User-Agent": "OpportunityFinder/2.0",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
 
-        # Jobspresso uses job listing containers
-        listings = soup.select(".job_listing, .job-listing, article.post")
-        if not listings:
-            listings = soup.select("li.job_listing")
+                html_content = data.get("html", "")
+                if not html_content or not html_content.strip():
+                    break
 
-        for listing in listings:
-            link = listing.select_one("a[href]")
-            if not link:
-                continue
+                soup = BeautifulSoup(html_content, "lxml")
+                listings = soup.select("li.job_listing")
 
-            url = link.get("href", "")
-            if not url.startswith("http"):
-                url = f"https://jobspresso.co{url}"
+                if not listings:
+                    break
 
-            title_el = listing.select_one("h3, h4, .job-title, .position")
-            title = title_el.get_text(strip=True) if title_el else link.get_text(strip=True)[:100]
+                for listing in listings:
+                    # Extract URL
+                    link = listing.select_one("a.job_listing-clickbox")
+                    url = ""
+                    if link:
+                        url = link.get("href", "")
+                    elif listing.get("data-href"):
+                        url = listing["data-href"]
 
-            company_el = listing.select_one(".company, .employer, .job-company")
-            company = company_el.get_text(strip=True) if company_el else ""
+                    if not url:
+                        continue
 
-            location_el = listing.select_one(".location, .job-location")
-            location = location_el.get_text(strip=True) if location_el else "Remote"
+                    # Extract title
+                    title_el = listing.select_one("h3.job_listing-title")
+                    title = title_el.get_text(strip=True) if title_el else ""
 
-            job_type_el = listing.select_one(".job-type, .type")
-            job_type = job_type_el.get_text(strip=True) if job_type_el else "Remote"
+                    if not title:
+                        continue
 
-            job_id = hashlib.md5(f"jobspresso-{url}".encode()).hexdigest()
-            score = calculate_score(title, "")
-            category = categorise_job(title, "")
-            location_type = detect_location_type(title, "", location)
-            contract_type = detect_contract_type(title, job_type)
+                    # Extract company
+                    company_el = listing.select_one(".job_listing-company strong")
+                    company = company_el.get_text(strip=True) if company_el else ""
 
-            jobs.append({
-                "id": job_id,
-                "title": title,
-                "company": company,
-                "location": location,
-                "url": url,
-                "description": "",
-                "source": "Jobspresso",
-                "job_type": job_type,
-                "category": category,
-                "location_type": location_type,
-                "contract_type": contract_type,
-                "score": score,
-                "posted_at": "",
-                "scraped_at": datetime.utcnow().isoformat(),
-            })
+                    # Extract location
+                    loc_el = listing.select_one(".job_listing-location .google_map_link")
+                    if not loc_el:
+                        loc_el = listing.select_one(".job_listing-location")
+                    location = loc_el.get_text(strip=True) if loc_el else "Remote"
 
-        if jobs:
-            await upsert_jobs(jobs)
+                    # Extract job type
+                    type_el = listing.select_one("li.job_listing-type, .job-type")
+                    job_type_text = type_el.get_text(strip=True) if type_el else ""
 
-        await log_scrape("Jobspresso", len(jobs))
-        logger.info(f"Jobspresso: scraped {len(jobs)} jobs")
-        return len(jobs)
+                    job_id = hashlib.md5(f"jobspresso-{url}".encode()).hexdigest()
+                    score = calculate_score(title, job_type_text)
+                    category = categorise_job(title, job_type_text)
+                    location_type = detect_location_type(title, "", location)
+                    contract_type = detect_contract_type(title, job_type_text)
+
+                    all_jobs.append({
+                        "id": job_id,
+                        "title": title,
+                        "company": company,
+                        "location": location,
+                        "url": url,
+                        "description": "",
+                        "source": "Jobspresso",
+                        "job_type": job_type_text or "Remote",
+                        "category": category,
+                        "location_type": location_type,
+                        "contract_type": contract_type,
+                        "score": score,
+                        "posted_at": "",
+                        "scraped_at": datetime.utcnow().isoformat(),
+                    })
+
+                # Check if there are more pages
+                if not data.get("found_jobs", True):
+                    break
+
+                page += 1
+
+        if all_jobs:
+            await upsert_jobs(all_jobs)
+
+        await log_scrape("Jobspresso", len(all_jobs))
+        logger.info(f"Jobspresso: scraped {len(all_jobs)} jobs")
+        return len(all_jobs)
 
     except Exception as e:
         logger.error(f"Jobspresso scraper error: {e}")

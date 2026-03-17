@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 ALL_SCRAPERS = [
     ("RemoteOK", scrape_remoteok),
     ("WeWorkRemotely", scrape_weworkremotely),
-    ("Remote.co", scrape_remoteco),
+    ("Himalayas", scrape_remoteco),
     ("Jobspresso", scrape_jobspresso),
     ("WorkingNomads", scrape_workingnomads),
 ]
