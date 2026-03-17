@@ -1,4 +1,4 @@
-"""SQLite database models and helpers for Remote JobFinder."""
+"""OpportunityFinder — SQLite database models and helpers."""
 
 import aiosqlite
 import os
@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     source TEXT NOT NULL,
     job_type TEXT,
     category TEXT,
+    location_type TEXT DEFAULT 'remote',
+    contract_type TEXT DEFAULT 'unknown',
     score INTEGER DEFAULT 0,
     posted_at TEXT,
     scraped_at TEXT NOT NULL,
@@ -31,7 +33,25 @@ CREATE TABLE IF NOT EXISTS scrape_log (
     status TEXT DEFAULT 'success',
     error_message TEXT
 );
+
+CREATE TABLE IF NOT EXISTS kanban_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    column_name TEXT NOT NULL DEFAULT 'interested',
+    notes TEXT DEFAULT '',
+    applied_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    FOREIGN KEY (job_id) REFERENCES jobs(id)
+);
 """
+
+MIGRATIONS = [
+    # Add location_type and contract_type if missing (safe to run multiple times)
+    "ALTER TABLE jobs ADD COLUMN location_type TEXT DEFAULT 'remote'",
+    "ALTER TABLE jobs ADD COLUMN contract_type TEXT DEFAULT 'unknown'",
+]
 
 
 async def get_db():
@@ -42,10 +62,19 @@ async def get_db():
 
 
 async def init_db():
-    """Initialise the database tables."""
+    """Initialise the database tables and run migrations."""
     db = await get_db()
     await db.executescript(CREATE_TABLES)
     await db.commit()
+
+    # Run migrations (ignore errors for already-existing columns)
+    for migration in MIGRATIONS:
+        try:
+            await db.execute(migration)
+            await db.commit()
+        except Exception:
+            pass
+
     await db.close()
 
 
@@ -54,13 +83,16 @@ async def upsert_job(job: dict):
     db = await get_db()
     await db.execute(
         """INSERT INTO jobs (id, title, company, location, url, description,
-           source, job_type, category, score, posted_at, scraped_at, is_new)
+           source, job_type, category, location_type, contract_type,
+           score, posted_at, scraped_at, is_new)
            VALUES (:id, :title, :company, :location, :url, :description,
-           :source, :job_type, :category, :score, :posted_at, :scraped_at, 1)
+           :source, :job_type, :category, :location_type, :contract_type,
+           :score, :posted_at, :scraped_at, 1)
            ON CONFLICT(id) DO UPDATE SET
            title=:title, company=:company, location=:location,
            description=:description, score=:score, scraped_at=:scraped_at,
-           is_new=0""",
+           location_type=:location_type, contract_type=:contract_type,
+           category=:category, is_new=0""",
         job,
     )
     await db.commit()
@@ -73,13 +105,16 @@ async def upsert_jobs(jobs: list[dict]):
     for job in jobs:
         await db.execute(
             """INSERT INTO jobs (id, title, company, location, url, description,
-               source, job_type, category, score, posted_at, scraped_at, is_new)
+               source, job_type, category, location_type, contract_type,
+               score, posted_at, scraped_at, is_new)
                VALUES (:id, :title, :company, :location, :url, :description,
-               :source, :job_type, :category, :score, :posted_at, :scraped_at, 1)
+               :source, :job_type, :category, :location_type, :contract_type,
+               :score, :posted_at, :scraped_at, 1)
                ON CONFLICT(id) DO UPDATE SET
                title=:title, company=:company, location=:location,
                description=:description, score=:score, scraped_at=:scraped_at,
-               is_new=0""",
+               location_type=:location_type, contract_type=:contract_type,
+               category=:category, is_new=0""",
             job,
         )
     await db.commit()
@@ -90,6 +125,8 @@ async def get_jobs(
     source: str | None = None,
     category: str | None = None,
     job_type: str | None = None,
+    location_type: str | None = None,
+    contract_type: str | None = None,
     min_score: int = 0,
     search: str | None = None,
     limit: int = 100,
@@ -109,6 +146,12 @@ async def get_jobs(
     if job_type:
         query += " AND job_type = ?"
         params.append(job_type)
+    if location_type:
+        query += " AND location_type = ?"
+        params.append(location_type)
+    if contract_type:
+        query += " AND contract_type = ?"
+        params.append(contract_type)
     if search:
         query += " AND (title LIKE ? OR company LIKE ? OR description LIKE ?)"
         term = f"%{search}%"
@@ -167,5 +210,82 @@ async def log_scrape(source: str, job_count: int, status: str = "success", error
            VALUES (?, ?, ?, ?, ?)""",
         (source, datetime.utcnow().isoformat(), job_count, status, error),
     )
+    await db.commit()
+    await db.close()
+
+
+# --- Kanban board functions ---
+
+async def get_kanban_cards():
+    """Fetch all Kanban cards with job details."""
+    db = await get_db()
+    cursor = await db.execute(
+        """SELECT k.*, j.title, j.company, j.url, j.score, j.source,
+                  j.category, j.location, j.contract_type
+           FROM kanban_cards k
+           JOIN jobs j ON k.job_id = j.id
+           ORDER BY k.column_name, k.sort_order"""
+    )
+    rows = await cursor.fetchall()
+    await db.close()
+    return [dict(row) for row in rows]
+
+
+async def add_kanban_card(job_id: str, column: str = "interested"):
+    """Add a job to the Kanban board."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+
+    # Check if already on board
+    cursor = await db.execute(
+        "SELECT id FROM kanban_cards WHERE job_id = ?", (job_id,)
+    )
+    existing = await cursor.fetchone()
+    if existing:
+        await db.close()
+        return {"status": "exists", "id": existing["id"]}
+
+    cursor = await db.execute(
+        """INSERT INTO kanban_cards (job_id, column_name, created_at, updated_at)
+           VALUES (?, ?, ?, ?)""",
+        (job_id, column, now, now),
+    )
+    await db.commit()
+    card_id = cursor.lastrowid
+    await db.close()
+    return {"status": "created", "id": card_id}
+
+
+async def move_kanban_card(card_id: int, column: str):
+    """Move a Kanban card to a different column."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+    applied_at = now if column == "applied" else None
+
+    await db.execute(
+        """UPDATE kanban_cards SET column_name = ?, updated_at = ?,
+           applied_at = COALESCE(applied_at, ?) WHERE id = ?""",
+        (column, now, applied_at, card_id),
+    )
+    await db.commit()
+    await db.close()
+
+
+async def update_kanban_notes(card_id: int, notes: str):
+    """Update notes on a Kanban card."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+    await db.execute(
+        "UPDATE kanban_cards SET notes = ?, updated_at = ? WHERE id = ?",
+        (notes, now, card_id),
+    )
+    await db.commit()
+    await db.close()
+
+
+async def delete_kanban_card(card_id: int):
+    """Remove a card from the Kanban board."""
+    db = await get_db()
+    await db.execute("DELETE FROM kanban_cards WHERE id = ?", (card_id,))
     await db.commit()
     await db.close()

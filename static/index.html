@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" translate="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remote JobFinder</title>
+    <meta name="google" content="notranslate">
+    <title>OpportunityFinder</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
 </head>
@@ -11,19 +12,30 @@
     <!-- Header -->
     <header class="header">
         <div class="header-left">
-            <h1 id="headerTitle">Remote <span class="accent">JobFinder</span></h1>
+            <h1 id="headerTitle">Opportunity<span class="accent">Finder</span></h1>
         </div>
         <div class="header-controls">
             <button id="langToggle" class="lang-toggle" title="Switch language"></button>
             <button id="themeToggle" class="theme-toggle" title="Toggle dark/light mode"></button>
+            <button id="btnScoreHelp" class="btn-help" title="Score uitleg">?</button>
             <button id="btnScrape" class="btn-scrape">
                 &#x1F50D; <span id="btnScrapeText">Nu Scannen</span>
             </button>
         </div>
     </header>
 
+    <!-- Navigation tabs -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-view="jobs" id="tabJobs">
+            <span id="tabJobsText">Opdrachten</span>
+        </button>
+        <button class="nav-tab" data-view="kanban" id="tabKanban">
+            <span id="tabKanbanText">Kanban Board</span>
+        </button>
+    </nav>
+
     <!-- Stats -->
-    <section class="stats-bar">
+    <section class="stats-bar" id="statsSection">
         <div class="stat-card">
             <div class="stat-value" id="statTotal">0</div>
             <div class="stat-label" id="labelTotal">Totaal</div>
@@ -43,7 +55,7 @@
     </section>
 
     <!-- Filters -->
-    <section class="filters">
+    <section class="filters" id="filtersSection">
         <div class="filter-group">
             <input type="text" id="searchInput" class="search-input" placeholder="Zoek opdrachten...">
         </div>
@@ -62,22 +74,36 @@
             <label id="labelCategory">Categorie</label>
             <select id="filterCategory" class="filter-select">
                 <option value="" class="opt-all">Alle</option>
-                <option value="AI/ML">AI/ML</option>
-                <option value="Automation">Automation</option>
-                <option value="Development">Development</option>
+                <option value="AI & Automation">AI & Automation</option>
+                <option value="Marketing & BizDev">Marketing & BizDev</option>
+                <option value="Lead Gen & Outbound">Lead Gen & Outbound</option>
+                <option value="Sales & Sales Automation">Sales & Sales Automation</option>
+                <option value="Finance & Accounting">Finance & Accounting</option>
+                <option value="Operations & Admin">Operations & Admin</option>
+                <option value="Workshops & Training">Workshops & Training</option>
                 <option value="Integration">Integration</option>
+                <option value="Development">Development</option>
                 <option value="General">General</option>
             </select>
         </div>
         <div class="filter-group">
-            <label id="labelType">Type</label>
-            <select id="filterType" class="filter-select">
+            <label id="labelLocation">Locatie</label>
+            <select id="filterLocation" class="filter-select">
                 <option value="" class="opt-all">Alle</option>
-                <option value="Remote">Remote</option>
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Contract">Contract</option>
-                <option value="Freelance">Freelance</option>
+                <option value="remote">Remote</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="onsite">On-site</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label id="labelContract">Contract</label>
+            <select id="filterContract" class="filter-select">
+                <option value="" class="opt-all">Alle</option>
+                <option value="freelance">Freelance</option>
+                <option value="contract">Contract</option>
+                <option value="fractional">Fractional</option>
+                <option value="part-time">Part-time</option>
+                <option value="full-time">Full-time</option>
             </select>
         </div>
         <div class="filter-group score-filter">
@@ -87,7 +113,7 @@
         </div>
     </section>
 
-    <!-- Job List -->
+    <!-- Job List View -->
     <main class="job-list" id="jobList">
         <div class="loading">
             <div class="spinner"></div>
@@ -95,9 +121,81 @@
         </div>
     </main>
 
+    <!-- Kanban View (hidden by default) -->
+    <section class="kanban-view" id="kanbanView" style="display:none;">
+        <div class="kanban-board" id="kanbanBoard">
+            <div class="kanban-column" data-column="interested">
+                <div class="kanban-column-header interested-header">
+                    <span id="colInterested">⭐ Interessant</span>
+                    <span class="kanban-count" id="countInterested">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsInterested"></div>
+            </div>
+            <div class="kanban-column" data-column="applied">
+                <div class="kanban-column-header applied-header">
+                    <span id="colApplied">📨 Gesolliciteerd</span>
+                    <span class="kanban-count" id="countApplied">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsApplied"></div>
+            </div>
+            <div class="kanban-column" data-column="interview">
+                <div class="kanban-column-header interview-header">
+                    <span id="colInterview">💬 Gesprek</span>
+                    <span class="kanban-count" id="countInterview">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsInterview"></div>
+            </div>
+            <div class="kanban-column" data-column="offer">
+                <div class="kanban-column-header offer-header">
+                    <span id="colOffer">🎯 Aanbod</span>
+                    <span class="kanban-count" id="countOffer">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsOffer"></div>
+            </div>
+            <div class="kanban-column" data-column="rejected">
+                <div class="kanban-column-header rejected-header">
+                    <span id="colRejected">❌ Afgewezen</span>
+                    <span class="kanban-count" id="countRejected">0</span>
+                </div>
+                <div class="kanban-cards" id="cardsRejected"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Score Help Modal -->
+    <div class="modal-overlay" id="scoreModal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Score Uitleg</h2>
+                <button class="modal-close" id="closeScoreModal">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <p id="scoreIntro">Elke opdracht krijgt een relevantie-score van 0-100 op basis van keywords in de titel en beschrijving:</p>
+                <table class="score-table">
+                    <tr><td class="score-tier tier1">25 pts</td><td id="st1">Exacte tools: Claude, Claude Code, Claude Projects, OpenClaw</td></tr>
+                    <tr><td class="score-tier tier2">20 pts</td><td id="st2">AI/LLM: ChatGPT, GPT-4, Gemini, Copilot, LLM, AI Assistant</td></tr>
+                    <tr><td class="score-tier tier3">15 pts</td><td id="st3">Automation: workflow, process automation, OCR, document processing</td></tr>
+                    <tr><td class="score-tier tier3">15 pts</td><td id="st3b">Marketing & BizDev: marketing, BDR, SDR, demand generation, CRM</td></tr>
+                    <tr><td class="score-tier tier3">15 pts</td><td id="st3c">Lead Gen: outbound, prospecting, cold outreach, pipeline</td></tr>
+                    <tr><td class="score-tier tier3">15 pts</td><td id="st3d">Finance: accounting, bookkeeping, audit, invoicing</td></tr>
+                    <tr><td class="score-tier tier3">15 pts</td><td id="st3e">Workshops: AI training, digital transformation, upskilling, coaching</td></tr>
+                    <tr><td class="score-tier tier4">10 pts</td><td id="st4">Integration: API, Python, webhooks, Power Automate, Zapier, n8n</td></tr>
+                    <tr><td class="score-tier tier5">8 pts</td><td id="st5">Sectors: financial, logistics, sales, HR, operations, healthcare</td></tr>
+                    <tr><td class="score-tier tier6">5 pts</td><td id="st6">Algemeen: remote, freelance, B2B, contractor, fractional</td></tr>
+                </table>
+                <p id="scoreMax" class="score-max">Maximum score: 100 (afgekapt)</p>
+                <div class="score-legend">
+                    <span class="legend-item"><span class="legend-dot high"></span> <span id="legendHigh">50+ = Zeer relevant</span></span>
+                    <span class="legend-item"><span class="legend-dot mid"></span> <span id="legendMid">25-49 = Relevant</span></span>
+                    <span class="legend-item"><span class="legend-dot low"></span> <span id="legendLow">&lt;25 = Minder relevant</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
-        <span id="footerText">Remote JobFinder — Scant automatisch elke 6 uur</span>
+        <span id="footerText">OpportunityFinder — Scant automatisch elke 6 uur</span>
     </footer>
 
     <script src="/static/js/app.js"></script>

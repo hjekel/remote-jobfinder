@@ -8,7 +8,7 @@ import feedparser
 import httpx
 
 from app.models import upsert_jobs, log_scrape
-from app.scorer import calculate_score, categorise_job
+from app.scorer import calculate_score, categorise_job, detect_location_type, detect_contract_type
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,8 @@ async def scrape_weworkremotely() -> int:
                         job_id = hashlib.md5(f"wwr-{url}".encode()).hexdigest()
                         score = calculate_score(title, description)
                         category = categorise_job(title, description)
+                        location_type = detect_location_type(title, description)
+                        contract_type = detect_contract_type(title, description)
 
                         all_jobs.append({
                             "id": job_id,
@@ -72,6 +74,8 @@ async def scrape_weworkremotely() -> int:
                             "source": "WeWorkRemotely",
                             "job_type": "Remote",
                             "category": category,
+                            "location_type": location_type,
+                            "contract_type": contract_type,
                             "score": score,
                             "posted_at": posted,
                             "scraped_at": datetime.utcnow().isoformat(),
