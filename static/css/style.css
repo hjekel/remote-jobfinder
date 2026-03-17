@@ -394,6 +394,7 @@ body {
 .tag-new { background: var(--ferrari-rood); color: white; }
 .tag-contract { background: #6366f1; color: white; }
 .tag-location { background: #059669; color: white; }
+.tag-region { background: #0891b2; color: white; }
 
 /* Kanban add button */
 .btn-kanban {

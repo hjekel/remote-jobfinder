@@ -106,6 +106,18 @@
                 <option value="full-time">Full-time</option>
             </select>
         </div>
+        <div class="filter-group">
+            <label id="labelRegion">Regio</label>
+            <select id="filterRegion" class="filter-select">
+                <option value="" class="opt-all">Alle</option>
+                <option value="nearby" selected>🇳🇱 Mijn regio + remote</option>
+                <option value="noord-holland">Noord-Holland</option>
+                <option value="zuid-holland">Zuid-Holland</option>
+                <option value="utrecht">Utrecht</option>
+                <option value="netherlands">Nederland (overig)</option>
+                <option value="international">Internationaal</option>
+            </select>
+        </div>
         <div class="filter-group score-filter">
             <label id="labelMinScore">Min Score</label>
             <input type="range" id="scoreRange" min="0" max="100" value="0" step="5">

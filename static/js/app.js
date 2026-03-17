@@ -13,6 +13,7 @@ const TRANSLATIONS = {
         category: 'Category',
         location: 'Location',
         contract: 'Contract',
+        region: 'Region',
         minScore: 'Min Score',
         all: 'All',
         scrapeNow: 'Scan Now',
@@ -53,6 +54,7 @@ const TRANSLATIONS = {
         category: 'Categorie',
         location: 'Locatie',
         contract: 'Contract',
+        region: 'Regio',
         minScore: 'Min Score',
         all: 'Alle',
         scrapeNow: 'Nu Scannen',
@@ -119,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('filterCategory').addEventListener('change', loadJobs);
     document.getElementById('filterLocation').addEventListener('change', loadJobs);
     document.getElementById('filterContract').addEventListener('change', loadJobs);
+    document.getElementById('filterRegion').addEventListener('change', loadJobs);
 
     const scoreDebounced = debounce(loadJobs, 300);
     document.getElementById('scoreRange').addEventListener('input', (e) => {
@@ -169,6 +172,7 @@ function applyLang(lang) {
     document.getElementById('labelCategory').textContent = tr.category;
     document.getElementById('labelLocation').textContent = tr.location;
     document.getElementById('labelContract').textContent = tr.contract;
+    document.getElementById('labelRegion').textContent = tr.region;
     document.getElementById('labelMinScore').textContent = tr.minScore;
     document.getElementById('btnScrapeText').textContent = tr.scrapeNow;
     document.getElementById('footerText').textContent = tr.footer;
@@ -239,6 +243,7 @@ async function loadJobs() {
     const category = document.getElementById('filterCategory').value;
     const locType = document.getElementById('filterLocation').value;
     const contractType = document.getElementById('filterContract').value;
+    const region = document.getElementById('filterRegion').value;
     const minScore = document.getElementById('scoreRange').value;
     const search = document.getElementById('searchInput').value;
 
@@ -246,6 +251,7 @@ async function loadJobs() {
     if (category) params.append('category', category);
     if (locType) params.append('location_type', locType);
     if (contractType) params.append('contract_type', contractType);
+    if (region) params.append('region', region);
     if (minScore > 0) params.append('min_score', minScore);
     if (search) params.append('search', search);
 
@@ -388,6 +394,7 @@ function renderJobs() {
         const onBoard = kanbanJobIds.has(job.id);
         const contractLabel = job.contract_type && job.contract_type !== 'unknown' ? job.contract_type : '';
         const locLabel = job.location_type && job.location_type !== 'remote' ? job.location_type : '';
+        const regionLabel = job.region && job.region !== 'international' ? job.region : '';
 
         return `
             <div class="job-card ${cardClass}">
@@ -405,6 +412,7 @@ function renderJobs() {
                     <span class="tag tag-category">${escapeHtml(job.category || 'General')}</span>
                     ${contractLabel ? `<span class="tag tag-contract">${escapeHtml(contractLabel)}</span>` : ''}
                     ${locLabel ? `<span class="tag tag-location">${escapeHtml(locLabel)}</span>` : ''}
+                    ${regionLabel ? `<span class="tag tag-region">${escapeHtml(regionLabel)}</span>` : ''}
                     ${job.is_new ? `<span class="tag tag-new">${t('newBadge')}</span>` : ''}
                 </div>
                 <button class="btn-kanban ${onBoard ? 'added' : ''}"

@@ -191,6 +191,56 @@ def detect_location_type(title: str, description: str = "", location: str = "") 
     return "remote"
 
 
+def detect_region(title: str, description: str = "", location: str = "") -> str:
+    """Detect the geographic region from job listing text.
+
+    Returns:
+        'noord-holland' — Haarlem, Amsterdam, Zaandam, etc.
+        'zuid-holland' — Leiden, Den Haag, Rotterdam, etc.
+        'utrecht' — Utrecht city and province
+        'netherlands' — Other NL locations
+        'international' — Non-NL or unspecified
+    """
+    text = f"{title} {description} {location}".lower()
+
+    # Noord-Holland cities and areas
+    nh_keywords = [
+        "haarlem", "amsterdam", "zaandam", "zaanstad", "hoofddorp",
+        "schiphol", "amstelveen", "haarlemmermeer", "ijmuiden",
+        "velsen", "heemstede", "bloemendaal", "beverwijk",
+        "alkmaar", "hilversum", "noord-holland", "north holland",
+    ]
+    # Zuid-Holland cities and areas
+    zh_keywords = [
+        "leiden", "den haag", "the hague", "'s-gravenhage", "rotterdam",
+        "delft", "zoetermeer", "dordrecht", "gouda", "alphen",
+        "katwijk", "leidschendam", "voorburg", "wassenaar",
+        "zuid-holland", "south holland",
+    ]
+    # Utrecht province
+    ut_keywords = [
+        "utrecht", "amersfoort", "nieuwegein", "veenendaal",
+        "zeist", "houten", "woerden", "ijsselstein",
+    ]
+    # General Netherlands
+    nl_keywords = [
+        "netherlands", "nederland", "dutch", "holland",
+        "eindhoven", "groningen", "breda", "tilburg", "arnhem",
+        "nijmegen", "enschede", "maastricht", "den bosch",
+        "'s-hertogenbosch", "zwolle", "apeldoorn", "leeuwarden",
+    ]
+
+    if any(kw in text for kw in nh_keywords):
+        return "noord-holland"
+    if any(kw in text for kw in zh_keywords):
+        return "zuid-holland"
+    if any(kw in text for kw in ut_keywords):
+        return "utrecht"
+    if any(kw in text for kw in nl_keywords):
+        return "netherlands"
+    return "international"
+
+
 def detect_contract_type(title: str, description: str = "") -> str:
     """Detect the contract type from job listing text.
 

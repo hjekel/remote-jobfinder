@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     category TEXT,
     location_type TEXT DEFAULT 'remote',
     contract_type TEXT DEFAULT 'unknown',
+    region TEXT DEFAULT 'international',
     score INTEGER DEFAULT 0,
     posted_at TEXT,
     scraped_at TEXT NOT NULL,
@@ -51,6 +52,7 @@ MIGRATIONS = [
     # Add location_type and contract_type if missing (safe to run multiple times)
     "ALTER TABLE jobs ADD COLUMN location_type TEXT DEFAULT 'remote'",
     "ALTER TABLE jobs ADD COLUMN contract_type TEXT DEFAULT 'unknown'",
+    "ALTER TABLE jobs ADD COLUMN region TEXT DEFAULT 'international'",
 ]
 
 
@@ -83,16 +85,16 @@ async def upsert_job(job: dict):
     db = await get_db()
     await db.execute(
         """INSERT INTO jobs (id, title, company, location, url, description,
-           source, job_type, category, location_type, contract_type,
+           source, job_type, category, location_type, contract_type, region,
            score, posted_at, scraped_at, is_new)
            VALUES (:id, :title, :company, :location, :url, :description,
-           :source, :job_type, :category, :location_type, :contract_type,
+           :source, :job_type, :category, :location_type, :contract_type, :region,
            :score, :posted_at, :scraped_at, 1)
            ON CONFLICT(id) DO UPDATE SET
            title=:title, company=:company, location=:location,
            description=:description, score=:score, scraped_at=:scraped_at,
            location_type=:location_type, contract_type=:contract_type,
-           category=:category, is_new=0""",
+           category=:category, region=:region, is_new=0""",
         job,
     )
     await db.commit()
@@ -105,16 +107,16 @@ async def upsert_jobs(jobs: list[dict]):
     for job in jobs:
         await db.execute(
             """INSERT INTO jobs (id, title, company, location, url, description,
-               source, job_type, category, location_type, contract_type,
+               source, job_type, category, location_type, contract_type, region,
                score, posted_at, scraped_at, is_new)
                VALUES (:id, :title, :company, :location, :url, :description,
-               :source, :job_type, :category, :location_type, :contract_type,
+               :source, :job_type, :category, :location_type, :contract_type, :region,
                :score, :posted_at, :scraped_at, 1)
                ON CONFLICT(id) DO UPDATE SET
                title=:title, company=:company, location=:location,
                description=:description, score=:score, scraped_at=:scraped_at,
                location_type=:location_type, contract_type=:contract_type,
-               category=:category, is_new=0""",
+               category=:category, region=:region, is_new=0""",
             job,
         )
     await db.commit()
@@ -127,12 +129,20 @@ async def get_jobs(
     job_type: str | None = None,
     location_type: str | None = None,
     contract_type: str | None = None,
+    region: str | None = None,
     min_score: int = 0,
     search: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
-    """Fetch jobs with optional filters."""
+    """Fetch jobs with optional filters.
+
+    Region logic:
+    - 'nearby' = remote jobs from anywhere + hybrid/onsite only from
+      Noord-Holland, Zuid-Holland, Utrecht, or general Netherlands.
+    - Specific region name = only that region.
+    - None/empty = no region filtering.
+    """
     db = await get_db()
     query = "SELECT * FROM jobs WHERE score >= ?"
     params: list = [min_score]
@@ -152,6 +162,15 @@ async def get_jobs(
     if contract_type:
         query += " AND contract_type = ?"
         params.append(contract_type)
+    if region == "nearby":
+        # Remote = anywhere is fine; hybrid/onsite must be in NL target regions
+        query += """ AND (
+            location_type = 'remote'
+            OR region IN ('noord-holland', 'zuid-holland', 'utrecht', 'netherlands')
+        )"""
+    elif region:
+        query += " AND region = ?"
+        params.append(region)
     if search:
         query += " AND (title LIKE ? OR company LIKE ? OR description LIKE ?)"
         term = f"%{search}%"
