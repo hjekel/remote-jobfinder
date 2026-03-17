@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote JobFinder</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1 id="headerTitle">Remote <span class="accent">JobFinder</span></h1>
+        </div>
+        <div class="header-controls">
+            <button id="langToggle" class="lang-toggle" title="Switch language"></button>
+            <button id="themeToggle" class="theme-toggle" title="Toggle dark/light mode"></button>
+            <button id="btnScrape" class="btn-scrape">
+                &#x1F50D; <span id="btnScrapeText">Nu Scannen</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <section class="stats-bar">
+        <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label" id="labelTotal">Totaal</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="statHigh">0</div>
+            <div class="stat-label" id="labelHigh">Hoge Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="statAvg">0</div>
+            <div class="stat-label" id="labelAvg">Gem. Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="statSources">0</div>
+            <div class="stat-label" id="labelSources">Bronnen</div>
+        </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters">
+        <div class="filter-group">
+            <input type="text" id="searchInput" class="search-input" placeholder="Zoek opdrachten...">
+        </div>
+        <div class="filter-group">
+            <label id="labelSource">Bron</label>
+            <select id="filterSource" class="filter-select">
+                <option value="" class="opt-all">Alle</option>
+                <option value="RemoteOK">RemoteOK</option>
+                <option value="WeWorkRemotely">We Work Remotely</option>
+                <option value="Remote.co">Remote.co</option>
+                <option value="Jobspresso">Jobspresso</option>
+                <option value="WorkingNomads">Working Nomads</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label id="labelCategory">Categorie</label>
+            <select id="filterCategory" class="filter-select">
+                <option value="" class="opt-all">Alle</option>
+                <option value="AI/ML">AI/ML</option>
+                <option value="Automation">Automation</option>
+                <option value="Development">Development</option>
+                <option value="Integration">Integration</option>
+                <option value="General">General</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label id="labelType">Type</label>
+            <select id="filterType" class="filter-select">
+                <option value="" class="opt-all">Alle</option>
+                <option value="Remote">Remote</option>
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Freelance">Freelance</option>
+            </select>
+        </div>
+        <div class="filter-group score-filter">
+            <label id="labelMinScore">Min Score</label>
+            <input type="range" id="scoreRange" min="0" max="100" value="0" step="5">
+            <span class="score-value" id="scoreValue">0</span>
+        </div>
+    </section>
+
+    <!-- Job List -->
+    <main class="job-list" id="jobList">
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Opdrachten laden...</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <span id="footerText">Remote JobFinder — Scant automatisch elke 6 uur</span>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
