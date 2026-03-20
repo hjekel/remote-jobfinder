@@ -15,6 +15,9 @@ const TRANSLATIONS = {
         contract: 'Contract',
         region: 'Region',
         minScore: 'Min Score',
+        sortScore: 'Score',
+        sortSalary: 'Salary',
+        sortDate: 'Newest',
         all: 'All',
         scrapeNow: 'Scan Now',
         scraping: 'Scanning...',
@@ -56,6 +59,9 @@ const TRANSLATIONS = {
         contract: 'Contract',
         region: 'Regio',
         minScore: 'Min Score',
+        sortScore: 'Score',
+        sortSalary: 'Salaris',
+        sortDate: 'Nieuwste',
         all: 'Alle',
         scrapeNow: 'Nu Scannen',
         scraping: 'Bezig...',
@@ -93,6 +99,7 @@ const KANBAN_COLUMNS = ['interested', 'applied', 'interview', 'offer', 'rejected
 let currentLang = localStorage.getItem('lang') || 'nl';
 let currentTheme = localStorage.getItem('theme') || 'light';
 let currentView = 'jobs';
+let currentSort = 'score';
 let jobs = [];
 let stats = {};
 let kanbanCards = [];
@@ -127,6 +134,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('scoreRange').addEventListener('input', (e) => {
         document.getElementById('scoreValue').textContent = e.target.value;
         scoreDebounced();
+    });
+
+    // Sort buttons
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentSort = btn.dataset.sort;
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadJobs();
+        });
     });
 
     // Nav tabs
@@ -174,6 +191,9 @@ function applyLang(lang) {
     document.getElementById('labelContract').textContent = tr.contract;
     document.getElementById('labelRegion').textContent = tr.region;
     document.getElementById('labelMinScore').textContent = tr.minScore;
+    document.getElementById('sortScoreText').textContent = tr.sortScore;
+    document.getElementById('sortSalaryText').textContent = tr.sortSalary;
+    document.getElementById('sortDateText').textContent = tr.sortDate;
     document.getElementById('btnScrapeText').textContent = tr.scrapeNow;
     document.getElementById('footerText').textContent = tr.footer;
     document.getElementById('tabJobsText').textContent = tr.tabJobs;
@@ -252,6 +272,7 @@ async function loadJobs() {
     if (locType) params.append('location_type', locType);
     if (contractType) params.append('contract_type', contractType);
     if (region) params.append('region', region);
+    if (currentSort !== 'score') params.append('sort_by', currentSort);
     if (minScore > 0) params.append('min_score', minScore);
     if (search) params.append('search', search);
 
@@ -395,6 +416,8 @@ function renderJobs() {
         const contractLabel = job.contract_type && job.contract_type !== 'unknown' ? job.contract_type : '';
         const locLabel = job.location_type && job.location_type !== 'remote' ? job.location_type : '';
         const regionLabel = job.region && job.region !== 'international' ? job.region : '';
+        const salaryStr = formatSalary(job.salary_min, job.salary_max);
+        const techTags = (job.tags || '').split(',').map(t => t.trim()).filter(t => t).slice(0, 4);
 
         return `
             <div class="job-card ${cardClass}">
@@ -403,8 +426,8 @@ function renderJobs() {
                     <div class="job-title">${escapeHtml(job.title)}</div>
                     <div class="job-meta">
                         ${job.company ? `<span>\u{1F3E2} ${escapeHtml(job.company)}</span>` : ''}
-                        <span>\u{1F4CD} ${escapeHtml(job.location || 'Remote')}</span>
-                        ${job.posted_at ? `<span>\u{1F4C5} ${formatDate(job.posted_at)}</span>` : ''}
+                        ${salaryStr ? `<span class="salary-label">\u{1F525} ${salaryStr}</span>` : ''}
+                        ${job.posted_at ? `<span>\u{1F4C5} ${formatRelativeDate(job.posted_at)}</span>` : ''}
                     </div>
                 </a>
                 <div class="job-tags">
@@ -413,6 +436,7 @@ function renderJobs() {
                     ${contractLabel ? `<span class="tag tag-contract">${escapeHtml(contractLabel)}</span>` : ''}
                     ${locLabel ? `<span class="tag tag-location">${escapeHtml(locLabel)}</span>` : ''}
                     ${regionLabel ? `<span class="tag tag-region">${escapeHtml(regionLabel)}</span>` : ''}
+                    ${techTags.map(tag => `<span class="tag tag-tech">${escapeHtml(tag)}</span>`).join('')}
                     ${job.is_new ? `<span class="tag tag-new">${t('newBadge')}</span>` : ''}
                 </div>
                 <button class="btn-kanban ${onBoard ? 'added' : ''}"
@@ -519,6 +543,39 @@ function formatDate(dateStr) {
     } catch {
         return dateStr.substring(0, 10);
     }
+}
+
+function formatRelativeDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr.substring(0, 10);
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 60) return diffMins <= 1 ? 'just now' : `${diffMins}m`;
+        if (diffHours < 24) return `${diffHours}h`;
+        if (diffDays < 30) return `${diffDays}d`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo`;
+        return `${Math.floor(diffDays / 365)}y`;
+    } catch {
+        return dateStr.substring(0, 10);
+    }
+}
+
+function formatSalary(min, max) {
+    if (!max && !min) return '';
+    const fmt = (n) => {
+        if (n >= 1000) return `$${Math.round(n / 1000)}k`;
+        return `$${n}`;
+    };
+    if (min && max && min !== max) return `${fmt(min)} - ${fmt(max)}`;
+    if (max) return fmt(max);
+    if (min) return `${fmt(min)}+`;
+    return '';
 }
 
 function debounce(fn, delay) {

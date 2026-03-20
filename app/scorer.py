@@ -9,13 +9,16 @@ import re
 # Tier 1 - Exact match tools (25 pts each)
 TIER_1 = [
     "claude", "claude projects", "claude skills", "claude code", "openclaw",
+    "cursor", "windsurf", "lovable", "replit agent", "v0.dev",
 ]
 
-# Tier 2 - AI/LLM general (20 pts each)
+# Tier 2 - AI/LLM & AI-building (20 pts each)
 TIER_2 = [
     "chatgpt", "gpt-4", "gpt4", "gpt", "gemini", "copilot", "ms copilot",
     "microsoft copilot", "llm", "ai assistant", "ai tools", "ai implementation",
     "ai strategy", "ai transformation", "ai adoption",
+    "prompt engineering", "ai-native", "ai native", "ai builder",
+    "build with ai", "ai-powered", "ai powered",
 ]
 
 # Tier 3 - Automation & processing (15 pts each)
@@ -31,29 +34,46 @@ TIER_3 = [
 TIER_3B = [
     "marketing", "business development", "bdr", "sdr", "demand generation",
     "growth", "content marketing", "digital marketing", "marketing automation",
-    "email marketing", "crm",
+    "email marketing", "crm", "personalised marketing", "personalized marketing",
+    "abm", "account-based marketing", "account based marketing",
+    "marketing strategy", "brand strategy", "growth marketing",
+    "performance marketing", "inbound marketing",
 ]
 
 # Tier 3c - Lead Gen & Outbound (15 pts each)
 TIER_3C = [
     "lead generation", "outbound", "prospecting", "cold outreach",
     "sales development", "pipeline", "lead gen", "outreach automation",
-    "linkedin automation",
+    "linkedin automation", "outbound lead generation",
+    "demand gen", "revenue operations", "revops",
+    "sales enablement", "sales ops",
 ]
 
 # Tier 3d - Finance & Accounting (15 pts each)
 TIER_3D = [
     "finance", "accounting", "bookkeeping", "financial analyst", "controller",
     "accounts payable", "accounts receivable", "audit", "invoicing",
-    "financial reporting",
+    "financial reporting", "fintech", "payments",
 ]
 
-# Tier 3e - Workshops & Training (15 pts each)
+# Tier 3e - Workshops, Coaching & Training (15 pts each)
 TIER_3E = [
     "workshop", "training", "ai training", "ai workshop", "ai coaching",
     "digital transformation", "change management", "upskilling",
     "ai literacy", "copilot training", "copilot implementation",
     "ai consultant", "ai consulting",
+    "coaching", "mentoring", "onboarding", "enablement",
+    "bdr onboarding", "sdr onboarding", "sales onboarding",
+    "team coaching", "sales coaching", "inside sales",
+]
+
+# Tier 3f - Strategy & GTM (15 pts each)
+TIER_3F = [
+    "gtm", "go-to-market", "go to market", "market expansion",
+    "geo expansion", "expansion strategy", "product roadmap",
+    "market positioning", "market entry", "business case",
+    "strategy leader", "strategy manager", "strategic partnerships",
+    "product-market fit", "product market fit", "pmf",
 ]
 
 # Tier 4 - Integration & development (10 pts each)
@@ -62,6 +82,7 @@ TIER_4 = [
     "data pipeline", "scraping", "internal tools", "dashboard",
     "app development", "no-code", "low-code", "power automate",
     "zapier", "make.com", "n8n", "power platform", "power apps",
+    "airtable", "notion", "hubspot",
 ]
 
 # Tier 5 - Sectors/departments (8 pts each)
@@ -69,14 +90,15 @@ TIER_5 = [
     "financial", "administrative", "warehouse", "logistics",
     "sales", "operations", "hr", "recruitment", "back-office",
     "back office", "supply chain", "procurement", "customer service",
-    "healthcare", "legal", "education",
+    "healthcare", "legal", "education", "saas", "b2b saas",
+    "smb", "startup", "scaleup", "scale-up",
 ]
 
 # Tier 6 - General relevance (5 pts each)
 TIER_6 = [
     "remote", "freelance", "consultant", "b2b", "contractor",
     "project-based", "project based", "fractional", "part-time",
-    "interim", "temporary", "contract",
+    "interim", "temporary", "contract", "emea", "europe",
 ]
 
 TIERS = [
@@ -87,6 +109,7 @@ TIERS = [
     (TIER_3C, 15),
     (TIER_3D, 15),
     (TIER_3E, 15),
+    (TIER_3F, 15),
     (TIER_4, 10),
     (TIER_5, 8),
     (TIER_6, 5),
@@ -129,23 +152,36 @@ def categorise_job(title: str, description: str = "") -> str:
 
     ai_keywords = {"ai", "machine learning", "ml", "llm", "gpt", "claude",
                    "chatgpt", "copilot", "gemini", "neural", "deep learning",
-                   "ai assistant", "ai tools", "ai implementation"}
+                   "ai assistant", "ai tools", "ai implementation",
+                   "prompt engineering", "ai-native", "ai builder",
+                   "cursor", "windsurf", "lovable", "claude code"}
     auto_keywords = {"automation", "automate", "workflow", "rpa", "process",
                      "ocr", "document processing", "data entry", "power automate",
                      "zapier", "make.com", "n8n", "repetitive", "routine"}
     marketing_keywords = {"marketing", "business development", "bdr", "sdr",
                           "demand generation", "growth", "content marketing",
-                          "digital marketing", "brand"}
+                          "digital marketing", "brand", "abm",
+                          "account-based marketing", "performance marketing",
+                          "inbound marketing", "personalised marketing",
+                          "personalized marketing", "growth marketing"}
     leadgen_keywords = {"lead generation", "outbound", "prospecting",
                         "cold outreach", "sales development", "pipeline",
-                        "lead gen", "outreach"}
+                        "lead gen", "outreach", "demand gen", "revops",
+                        "revenue operations", "outbound lead generation"}
+    gtm_keywords = {"gtm", "go-to-market", "go to market", "market expansion",
+                    "geo expansion", "expansion strategy", "product roadmap",
+                    "market entry", "strategic partnerships", "product-market fit"}
+    coaching_keywords = {"coaching", "mentoring", "onboarding", "enablement",
+                         "bdr onboarding", "sdr onboarding", "sales onboarding",
+                         "team coaching", "sales coaching", "inside sales"}
     sales_keywords = {"sales", "sales automation", "crm", "revenue",
                       "account executive", "account manager"}
     finance_keywords = {"finance", "accounting", "bookkeeping", "controller",
-                        "audit", "invoicing", "financial", "accounts payable"}
+                        "audit", "invoicing", "financial", "accounts payable",
+                        "fintech", "payments"}
     ops_keywords = {"operations", "admin", "administrative", "back-office",
                     "office manager", "logistics", "warehouse", "supply chain"}
-    workshop_keywords = {"workshop", "training", "coaching", "upskilling",
+    workshop_keywords = {"workshop", "training", "ai training", "upskilling",
                          "digital transformation", "change management",
                          "ai literacy", "consultant"}
     dev_keywords = {"developer", "development", "engineer", "programming",
@@ -157,6 +193,10 @@ def categorise_job(title: str, description: str = "") -> str:
         return "AI & Automation"
     if any(kw in text for kw in auto_keywords):
         return "AI & Automation"
+    if any(kw in text for kw in gtm_keywords):
+        return "Strategy & GTM"
+    if any(kw in text for kw in coaching_keywords):
+        return "Coaching & Enablement"
     if any(kw in text for kw in workshop_keywords):
         return "Workshops & Training"
     if any(kw in text for kw in leadgen_keywords):
@@ -197,7 +237,7 @@ def detect_region(title: str, description: str = "", location: str = "") -> str:
     Returns:
         'noord-holland' — Haarlem, Amsterdam, Zaandam, etc.
         'zuid-holland' — Leiden, Den Haag, Rotterdam, etc.
-        'utrecht' — Utrecht city and province
+        'midden-nederland' — Utrecht, Gelderland, Flevoland
         'netherlands' — Other NL locations
         'international' — Non-NL or unspecified
     """
@@ -209,6 +249,7 @@ def detect_region(title: str, description: str = "", location: str = "") -> str:
         "schiphol", "amstelveen", "haarlemmermeer", "ijmuiden",
         "velsen", "heemstede", "bloemendaal", "beverwijk",
         "alkmaar", "hilversum", "noord-holland", "north holland",
+        "purmerend", "hoorn", "den helder", "heerhugowaard",
     ]
     # Zuid-Holland cities and areas
     zh_keywords = [
@@ -216,26 +257,34 @@ def detect_region(title: str, description: str = "", location: str = "") -> str:
         "delft", "zoetermeer", "dordrecht", "gouda", "alphen",
         "katwijk", "leidschendam", "voorburg", "wassenaar",
         "zuid-holland", "south holland",
+        "schiedam", "vlaardingen", "rijswijk", "capelle",
     ]
-    # Utrecht province
-    ut_keywords = [
+    # Midden-Nederland — Utrecht + Gelderland + Flevoland
+    mn_keywords = [
         "utrecht", "amersfoort", "nieuwegein", "veenendaal",
         "zeist", "houten", "woerden", "ijsselstein",
+        "arnhem", "nijmegen", "apeldoorn", "ede", "wageningen",
+        "barneveld", "harderwijk", "doetinchem", "tiel",
+        "gelderland", "flevoland", "almere", "lelystad",
+        "midden-nederland", "midden nederland",
     ]
     # General Netherlands
     nl_keywords = [
         "netherlands", "nederland", "dutch", "holland",
-        "eindhoven", "groningen", "breda", "tilburg", "arnhem",
-        "nijmegen", "enschede", "maastricht", "den bosch",
-        "'s-hertogenbosch", "zwolle", "apeldoorn", "leeuwarden",
+        "eindhoven", "groningen", "breda", "tilburg",
+        "enschede", "maastricht", "den bosch",
+        "'s-hertogenbosch", "zwolle", "leeuwarden",
+        "heerlen", "venlo", "deventer", "emmen",
+        "noord-brabant", "limburg", "overijssel", "drenthe",
+        "friesland", "zeeland",
     ]
 
     if any(kw in text for kw in nh_keywords):
         return "noord-holland"
     if any(kw in text for kw in zh_keywords):
         return "zuid-holland"
-    if any(kw in text for kw in ut_keywords):
-        return "utrecht"
+    if any(kw in text for kw in mn_keywords):
+        return "midden-nederland"
     if any(kw in text for kw in nl_keywords):
         return "netherlands"
     return "international"
@@ -244,7 +293,8 @@ def detect_region(title: str, description: str = "", location: str = "") -> str:
 def detect_contract_type(title: str, description: str = "") -> str:
     """Detect the contract type from job listing text.
 
-    Returns: 'freelance', 'contract', 'part-time', 'full-time', 'fractional', or 'unknown'.
+    Returns: 'freelance', 'fractional', 'project', 'temporary', 'part-time',
+             'contract', 'full-time', or 'unknown'.
     """
     text = f"{title} {description}".lower()
 
@@ -252,10 +302,16 @@ def detect_contract_type(title: str, description: str = "") -> str:
         return "freelance"
     if any(kw in text for kw in ["fractional", "interim"]):
         return "fractional"
+    if any(kw in text for kw in ["project-based", "project based", "projectbasis",
+                                  "short-term project", "kortlopend project",
+                                  "opdracht"]):
+        return "project"
+    if any(kw in text for kw in ["temporary", "temp ", "tijdelijk", "fixed-term",
+                                  "fixed term", "bepaalde tijd", "kortlopend"]):
+        return "temporary"
     if any(kw in text for kw in ["part-time", "part time", "parttime", "deeltijd"]):
         return "part-time"
-    if any(kw in text for kw in ["contract", "contractor", "temporary", "temp",
-                                  "tijdelijk", "opdracht"]):
+    if any(kw in text for kw in ["contract", "contractor"]):
         return "contract"
     if any(kw in text for kw in ["full-time", "full time", "fulltime", "voltijd",
                                   "permanent"]):

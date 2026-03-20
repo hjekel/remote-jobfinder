@@ -68,6 +68,10 @@ async def scrape_remoteco() -> int:
 
                     location = ", ".join(item.get("locationRestrictions", [])) or "Remote"
                     posted = item.get("pubDate", "") or item.get("updatedAt", "")
+                    salary_min = item.get("minSalary", 0) or 0
+                    salary_max = item.get("maxSalary", 0) or 0
+                    raw_tags = item.get("categories", [])
+                    tags_str = ", ".join(raw_tags)
 
                     job_id = hashlib.md5(f"himalayas-{slug or url}".encode()).hexdigest()
 
@@ -91,6 +95,9 @@ async def scrape_remoteco() -> int:
                         "location_type": location_type,
                         "contract_type": contract_type,
                         "region": region,
+                        "salary_min": salary_min,
+                        "salary_max": salary_max,
+                        "tags": tags_str,
                         "score": score,
                         "posted_at": posted,
                         "scraped_at": datetime.utcnow().isoformat(),

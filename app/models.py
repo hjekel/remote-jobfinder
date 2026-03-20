@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     location_type TEXT DEFAULT 'remote',
     contract_type TEXT DEFAULT 'unknown',
     region TEXT DEFAULT 'international',
+    salary_min INTEGER DEFAULT 0,
+    salary_max INTEGER DEFAULT 0,
+    tags TEXT DEFAULT '',
     score INTEGER DEFAULT 0,
     posted_at TEXT,
     scraped_at TEXT NOT NULL,
@@ -53,6 +56,9 @@ MIGRATIONS = [
     "ALTER TABLE jobs ADD COLUMN location_type TEXT DEFAULT 'remote'",
     "ALTER TABLE jobs ADD COLUMN contract_type TEXT DEFAULT 'unknown'",
     "ALTER TABLE jobs ADD COLUMN region TEXT DEFAULT 'international'",
+    "ALTER TABLE jobs ADD COLUMN salary_min INTEGER DEFAULT 0",
+    "ALTER TABLE jobs ADD COLUMN salary_max INTEGER DEFAULT 0",
+    "ALTER TABLE jobs ADD COLUMN tags TEXT DEFAULT ''",
 ]
 
 
@@ -86,15 +92,19 @@ async def upsert_job(job: dict):
     await db.execute(
         """INSERT INTO jobs (id, title, company, location, url, description,
            source, job_type, category, location_type, contract_type, region,
+           salary_min, salary_max, tags,
            score, posted_at, scraped_at, is_new)
            VALUES (:id, :title, :company, :location, :url, :description,
            :source, :job_type, :category, :location_type, :contract_type, :region,
+           :salary_min, :salary_max, :tags,
            :score, :posted_at, :scraped_at, 1)
            ON CONFLICT(id) DO UPDATE SET
            title=:title, company=:company, location=:location,
            description=:description, score=:score, scraped_at=:scraped_at,
            location_type=:location_type, contract_type=:contract_type,
-           category=:category, region=:region, is_new=0""",
+           category=:category, region=:region,
+           salary_min=:salary_min, salary_max=:salary_max, tags=:tags,
+           is_new=0""",
         job,
     )
     await db.commit()
@@ -108,15 +118,19 @@ async def upsert_jobs(jobs: list[dict]):
         await db.execute(
             """INSERT INTO jobs (id, title, company, location, url, description,
                source, job_type, category, location_type, contract_type, region,
+               salary_min, salary_max, tags,
                score, posted_at, scraped_at, is_new)
                VALUES (:id, :title, :company, :location, :url, :description,
                :source, :job_type, :category, :location_type, :contract_type, :region,
+               :salary_min, :salary_max, :tags,
                :score, :posted_at, :scraped_at, 1)
                ON CONFLICT(id) DO UPDATE SET
                title=:title, company=:company, location=:location,
                description=:description, score=:score, scraped_at=:scraped_at,
                location_type=:location_type, contract_type=:contract_type,
-               category=:category, region=:region, is_new=0""",
+               category=:category, region=:region,
+               salary_min=:salary_min, salary_max=:salary_max, tags=:tags,
+               is_new=0""",
             job,
         )
     await db.commit()
@@ -130,6 +144,7 @@ async def get_jobs(
     location_type: str | None = None,
     contract_type: str | None = None,
     region: str | None = None,
+    sort_by: str = "score",
     min_score: int = 0,
     search: str | None = None,
     limit: int = 100,
@@ -166,7 +181,7 @@ async def get_jobs(
         # Remote = anywhere is fine; hybrid/onsite must be in NL target regions
         query += """ AND (
             location_type = 'remote'
-            OR region IN ('noord-holland', 'zuid-holland', 'utrecht', 'netherlands')
+            OR region IN ('noord-holland', 'zuid-holland', 'midden-nederland', 'netherlands')
         )"""
     elif region:
         query += " AND region = ?"
@@ -176,7 +191,14 @@ async def get_jobs(
         term = f"%{search}%"
         params.extend([term, term, term])
 
-    query += " ORDER BY score DESC, scraped_at DESC LIMIT ? OFFSET ?"
+    # Sorting
+    sort_options = {
+        "score": "score DESC, scraped_at DESC",
+        "salary": "salary_max DESC, salary_min DESC, score DESC",
+        "date": "posted_at DESC, scraped_at DESC",
+    }
+    order = sort_options.get(sort_by, sort_options["score"])
+    query += f" ORDER BY {order} LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     cursor = await db.execute(query, params)
@@ -240,7 +262,8 @@ async def get_kanban_cards():
     db = await get_db()
     cursor = await db.execute(
         """SELECT k.*, j.title, j.company, j.url, j.score, j.source,
-                  j.category, j.location, j.contract_type
+                  j.category, j.location, j.contract_type,
+                  j.salary_min, j.salary_max, j.tags
            FROM kanban_cards k
            JOIN jobs j ON k.job_id = j.id
            ORDER BY k.column_name, k.sort_order"""

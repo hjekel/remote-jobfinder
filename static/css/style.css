@@ -395,6 +395,45 @@ body {
 .tag-contract { background: #6366f1; color: white; }
 .tag-location { background: #059669; color: white; }
 .tag-region { background: #0891b2; color: white; }
+.tag-tech { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* Salary label */
+.salary-label {
+    color: var(--score-high);
+    font-weight: 700;
+}
+
+/* Sort buttons */
+.sort-group {
+    margin-left: auto;
+    gap: 0.3rem;
+}
+
+.sort-btn {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.sort-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.sort-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
 
 /* Kanban add button */
 .btn-kanban {

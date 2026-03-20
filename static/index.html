@@ -77,6 +77,8 @@
                 <option value="AI & Automation">AI & Automation</option>
                 <option value="Marketing & BizDev">Marketing & BizDev</option>
                 <option value="Lead Gen & Outbound">Lead Gen & Outbound</option>
+                <option value="Strategy & GTM">Strategy & GTM</option>
+                <option value="Coaching & Enablement">Coaching & Enablement</option>
                 <option value="Sales & Sales Automation">Sales & Sales Automation</option>
                 <option value="Finance & Accounting">Finance & Accounting</option>
                 <option value="Operations & Admin">Operations & Admin</option>
@@ -100,8 +102,10 @@
             <select id="filterContract" class="filter-select">
                 <option value="" class="opt-all">Alle</option>
                 <option value="freelance">Freelance</option>
-                <option value="contract">Contract</option>
                 <option value="fractional">Fractional</option>
+                <option value="project">Project</option>
+                <option value="temporary">Tijdelijk</option>
+                <option value="contract">Contract</option>
                 <option value="part-time">Part-time</option>
                 <option value="full-time">Full-time</option>
             </select>
@@ -113,7 +117,7 @@
                 <option value="nearby" selected>🇳🇱 Mijn regio + remote</option>
                 <option value="noord-holland">Noord-Holland</option>
                 <option value="zuid-holland">Zuid-Holland</option>
-                <option value="utrecht">Utrecht</option>
+                <option value="midden-nederland">Midden-Nederland</option>
                 <option value="netherlands">Nederland (overig)</option>
                 <option value="international">Internationaal</option>
             </select>
@@ -122,6 +126,11 @@
             <label id="labelMinScore">Min Score</label>
             <input type="range" id="scoreRange" min="0" max="100" value="0" step="5">
             <span class="score-value" id="scoreValue">0</span>
+        </div>
+        <div class="filter-group sort-group">
+            <button class="sort-btn active" data-sort="score" id="sortScore" title="Sort by relevance">&#x1F3AF; <span id="sortScoreText">Score</span></button>
+            <button class="sort-btn" data-sort="salary" id="sortSalary" title="Sort by salary">&#x1F4B0; <span id="sortSalaryText">Salaris</span></button>
+            <button class="sort-btn" data-sort="date" id="sortDate" title="Sort by date">&#x1F4C5; <span id="sortDateText">Nieuwste</span></button>
         </div>
     </section>
 

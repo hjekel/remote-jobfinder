@@ -42,7 +42,10 @@ async def scrape_remoteok() -> int:
                 url = f"https://remoteok.com{url}"
             location = item.get("location", "Remote")
             posted = item.get("date", "")
-            tags = ", ".join(item.get("tags", []))
+            raw_tags = item.get("tags", [])
+            tags = ", ".join(raw_tags)
+            salary_min = item.get("salary_min", 0) or 0
+            salary_max = item.get("salary_max", 0) or 0
 
             job_id = hashlib.md5(f"remoteok-{item.get('id', url)}".encode()).hexdigest()
 
@@ -66,6 +69,9 @@ async def scrape_remoteok() -> int:
                 "location_type": location_type,
                 "contract_type": contract_type,
                 "region": region,
+                "salary_min": salary_min,
+                "salary_max": salary_max,
+                "tags": tags,
                 "score": score,
                 "posted_at": posted,
                 "scraped_at": datetime.utcnow().isoformat(),
