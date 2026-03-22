@@ -1,5 +1,6 @@
 """RemoteOK scraper — uses their public JSON API."""
 
+import asyncio
 import hashlib
 import logging
 from datetime import datetime
@@ -13,19 +14,29 @@ logger = logging.getLogger(__name__)
 
 REMOTEOK_URL = "https://remoteok.com/api"
 
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/html, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://remoteok.com/",
+}
+
 
 async def scrape_remoteok() -> int:
     """Fetch jobs from RemoteOK JSON API.
+
+    Uses browser-like headers to avoid 403 blocking on cloud IPs.
 
     Returns:
         Number of jobs scraped.
     """
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(
-                REMOTEOK_URL,
-                headers={"User-Agent": "RemoteJobFinder/1.0"},
-            )
+        # Small delay to be polite
+        await asyncio.sleep(2)
+
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.get(REMOTEOK_URL, headers=BROWSER_HEADERS)
             resp.raise_for_status()
             data = resp.json()
 
