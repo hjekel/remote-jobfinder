@@ -49,6 +49,29 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
     sort_order INTEGER DEFAULT 0,
     FOREIGN KEY (job_id) REFERENCES jobs(id)
 );
+
+CREATE TABLE IF NOT EXISTS prospects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_name TEXT NOT NULL,
+    company_website TEXT,
+    contact_name TEXT,
+    contact_title TEXT,
+    contact_email TEXT,
+    contact_linkedin TEXT,
+    source_type TEXT,
+    source_url TEXT,
+    source_text TEXT,
+    ai_summary TEXT,
+    ai_score INTEGER DEFAULT 0,
+    ai_signals TEXT,
+    suggested_approach TEXT,
+    category TEXT,
+    priority TEXT DEFAULT 'medium',
+    status TEXT DEFAULT 'new',
+    notes TEXT,
+    added_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 """
 
 MIGRATIONS = [
@@ -329,5 +352,86 @@ async def delete_kanban_card(card_id: int):
     """Remove a card from the Kanban board."""
     db = await get_db()
     await db.execute("DELETE FROM kanban_cards WHERE id = ?", (card_id,))
+    await db.commit()
+    await db.close()
+
+
+# --- Manual Prospects functions ---
+
+async def add_prospect(prospect: dict) -> int:
+    """Add a manually analysed prospect to the pipeline."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+    cursor = await db.execute(
+        """INSERT INTO prospects (company_name, company_website, contact_name,
+           contact_title, contact_email, contact_linkedin, source_type,
+           source_url, source_text, ai_summary, ai_score, ai_signals,
+           suggested_approach, category, priority, status, notes,
+           added_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            prospect.get("company_name", ""),
+            prospect.get("company_website", ""),
+            prospect.get("contact_name", ""),
+            prospect.get("contact_title", ""),
+            prospect.get("contact_email", ""),
+            prospect.get("contact_linkedin", ""),
+            prospect.get("source_type", "other"),
+            prospect.get("source_url", ""),
+            prospect.get("source_text", "")[:5000],
+            prospect.get("ai_summary", ""),
+            prospect.get("ai_score", 0),
+            prospect.get("ai_signals", ""),
+            prospect.get("suggested_approach", ""),
+            prospect.get("category", "ai_automation"),
+            prospect.get("priority", "medium"),
+            prospect.get("status", "new"),
+            prospect.get("notes", ""),
+            now, now,
+        ),
+    )
+    await db.commit()
+    prospect_id = cursor.lastrowid
+    await db.close()
+    return prospect_id
+
+
+async def get_prospects(status: str | None = None):
+    """Fetch all manual prospects, optionally filtered by status."""
+    db = await get_db()
+    query = "SELECT * FROM prospects"
+    params = []
+    if status:
+        query += " WHERE status = ?"
+        params.append(status)
+    query += " ORDER BY ai_score DESC, added_at DESC"
+    cursor = await db.execute(query, params)
+    rows = await cursor.fetchall()
+    await db.close()
+    return [dict(row) for row in rows]
+
+
+async def update_prospect_status(prospect_id: int, status: str, notes: str | None = None):
+    """Update a prospect's status and optionally notes."""
+    db = await get_db()
+    now = datetime.utcnow().isoformat()
+    if notes is not None:
+        await db.execute(
+            "UPDATE prospects SET status = ?, notes = ?, updated_at = ? WHERE id = ?",
+            (status, notes, now, prospect_id),
+        )
+    else:
+        await db.execute(
+            "UPDATE prospects SET status = ?, updated_at = ? WHERE id = ?",
+            (status, now, prospect_id),
+        )
+    await db.commit()
+    await db.close()
+
+
+async def delete_prospect(prospect_id: int):
+    """Remove a prospect from the pipeline."""
+    db = await get_db()
+    await db.execute("DELETE FROM prospects WHERE id = ?", (prospect_id,))
     await db.commit()
     await db.close()

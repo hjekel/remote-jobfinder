@@ -45,6 +45,12 @@ const TRANSLATIONS = {
         deleteBtn: 'Remove',
         notesPlaceholder: 'Add notes...',
         kanbanEmpty: 'No cards yet. Click + on a job to add it here.',
+        tabProspects: '+ Candidate',
+        prospectTitle: 'Add Candidate',
+        analyseBtn: 'Analyse',
+        analysing: 'Analysing...',
+        saveProspect: 'Add to Pipeline',
+        prospectSaved: 'Prospect added to pipeline!',
     },
     nl: {
         title: 'Opportunity<span class="accent">Finder</span>',
@@ -89,6 +95,12 @@ const TRANSLATIONS = {
         deleteBtn: 'Verwijder',
         notesPlaceholder: 'Notities toevoegen...',
         kanbanEmpty: 'Nog geen kaarten. Klik + op een opdracht om hem hier toe te voegen.',
+        tabProspects: '+ Kandidaat',
+        prospectTitle: 'Kandidaat Toevoegen',
+        analyseBtn: 'Analyseer',
+        analysing: 'Bezig...',
+        saveProspect: 'Toevoegen aan Pipeline',
+        prospectSaved: 'Prospect toegevoegd aan pipeline!',
     }
 };
 
@@ -146,6 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Prospect module
+    document.getElementById('btnAnalyse').addEventListener('click', analyseProspect);
+    document.getElementById('btnSaveProspect').addEventListener('click', saveProspect);
+
     // Nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', () => switchView(tab.dataset.view));
@@ -198,6 +214,10 @@ function applyLang(lang) {
     document.getElementById('footerText').textContent = tr.footer;
     document.getElementById('tabJobsText').textContent = tr.tabJobs;
     document.getElementById('tabKanbanText').textContent = tr.tabKanban;
+    document.getElementById('tabProspectsText').textContent = tr.tabProspects;
+    document.getElementById('prospectTitle').textContent = tr.prospectTitle;
+    document.getElementById('btnAnalyseText').textContent = tr.analyseBtn;
+    document.getElementById('btnSaveText').textContent = tr.saveProspect;
 
     // Modal
     document.getElementById('modalTitle').textContent = tr.scoreTitle;
@@ -231,20 +251,26 @@ function switchView(view) {
 
     const jobsView = document.getElementById('jobList');
     const kanbanView = document.getElementById('kanbanView');
+    const prospectView = document.getElementById('prospectView');
     const statsSection = document.getElementById('statsSection');
     const filtersSection = document.getElementById('filtersSection');
 
+    jobsView.style.display = 'none';
+    kanbanView.style.display = 'none';
+    prospectView.style.display = 'none';
+    statsSection.style.display = 'none';
+    filtersSection.style.display = 'none';
+
     if (view === 'jobs') {
         jobsView.style.display = '';
-        kanbanView.style.display = 'none';
         statsSection.style.display = '';
         filtersSection.style.display = '';
-    } else {
-        jobsView.style.display = 'none';
+    } else if (view === 'kanban') {
         kanbanView.style.display = '';
-        statsSection.style.display = 'none';
-        filtersSection.style.display = 'none';
         loadKanban();
+    } else if (view === 'prospects') {
+        prospectView.style.display = '';
+        loadProspectList();
     }
 }
 
@@ -584,4 +610,190 @@ function debounce(fn, delay) {
         clearTimeout(timer);
         timer = setTimeout(() => fn(...args), delay);
     };
+}
+
+// --- Prospect Module ---
+
+let currentAnalysis = null;
+
+async function analyseProspect() {
+    const sourceText = document.getElementById('prospectSourceText').value;
+    if (!sourceText.trim()) {
+        alert('Plak eerst tekst om te analyseren');
+        return;
+    }
+
+    const btn = document.getElementById('btnAnalyse');
+    const textEl = document.getElementById('btnAnalyseText');
+    btn.disabled = true;
+    textEl.textContent = t('analysing');
+
+    try {
+        const resp = await fetch('/api/prospects/analyse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                source_text: sourceText,
+                source_type: document.getElementById('prospectSourceType').value,
+                source_url: document.getElementById('prospectSourceUrl').value,
+                company_name: document.getElementById('prospectCompanyName').value,
+            })
+        });
+        const data = await resp.json();
+        currentAnalysis = data;
+        displayAnalysis(data);
+    } catch (err) {
+        alert('Analyse mislukt: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        textEl.textContent = t('analyseBtn');
+    }
+}
+
+function displayAnalysis(data) {
+    document.getElementById('prospectResults').style.display = '';
+
+    // Score badge
+    const badge = document.getElementById('prospectScoreBadge');
+    badge.textContent = data.ai_score;
+    badge.className = 'prospect-score-badge ' +
+        (data.ai_score >= 60 ? 'high' : data.ai_score >= 30 ? 'mid' : 'low');
+
+    // Company + summary
+    document.getElementById('prospectCompanyResult').textContent =
+        data.company_name || 'Niet gedetecteerd';
+    document.getElementById('prospectSummary').textContent = data.ai_summary;
+
+    // Priority tag
+    const priorityTag = document.getElementById('prospectPriorityTag');
+    priorityTag.textContent = data.priority.toUpperCase();
+    priorityTag.className = 'tag ' +
+        (data.priority === 'high' ? 'tag-new' : data.priority === 'medium' ? 'tag-category' : 'tag-contract');
+
+    // Signals
+    const signalsEl = document.getElementById('prospectSignals');
+    signalsEl.innerHTML = (data.ai_signals || []).map(s => `
+        <div class="signal-item">
+            <span class="signal-name">${escapeHtml(s.signal)}</span>
+            <span class="signal-score">+${s.score}</span>
+            <span class="signal-quote">"${escapeHtml(s.quote)}"</span>
+        </div>
+    `).join('');
+
+    // Contacts
+    const contactsEl = document.getElementById('prospectContacts');
+    contactsEl.innerHTML = (data.suggested_contacts || []).map(c => `
+        <div class="contact-suggestion">
+            <strong>${escapeHtml(c.title)}</strong> — ${escapeHtml(c.reason)}
+        </div>
+    `).join('');
+
+    // Approach
+    document.getElementById('prospectApproach').textContent = data.suggested_approach || '';
+}
+
+async function saveProspect() {
+    if (!currentAnalysis) return;
+
+    const payload = {
+        company_name: currentAnalysis.company_name || document.getElementById('prospectCompanyName').value || 'Unknown',
+        company_website: document.getElementById('prospectSourceUrl').value,
+        contact_name: document.getElementById('prospectContactName').value,
+        contact_title: document.getElementById('prospectContactTitle').value,
+        contact_email: document.getElementById('prospectContactEmail').value,
+        contact_linkedin: document.getElementById('prospectContactLinkedin').value,
+        source_type: document.getElementById('prospectSourceType').value,
+        source_url: document.getElementById('prospectSourceUrl').value,
+        source_text: document.getElementById('prospectSourceText').value,
+        ai_summary: currentAnalysis.ai_summary,
+        ai_score: currentAnalysis.ai_score,
+        ai_signals: JSON.stringify(currentAnalysis.ai_signals || []),
+        suggested_approach: currentAnalysis.suggested_approach,
+        category: currentAnalysis.category,
+        priority: currentAnalysis.priority,
+        notes: document.getElementById('prospectNotes').value,
+    };
+
+    try {
+        const resp = await fetch('/api/prospects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+            alert(t('prospectSaved'));
+            // Reset form
+            document.getElementById('prospectSourceText').value = '';
+            document.getElementById('prospectResults').style.display = 'none';
+            document.getElementById('prospectContactName').value = '';
+            document.getElementById('prospectContactTitle').value = '';
+            document.getElementById('prospectContactEmail').value = '';
+            document.getElementById('prospectContactLinkedin').value = '';
+            document.getElementById('prospectNotes').value = '';
+            currentAnalysis = null;
+            loadProspectList();
+        }
+    } catch (err) {
+        alert('Opslaan mislukt: ' + err.message);
+    }
+}
+
+async function loadProspectList() {
+    const container = document.getElementById('prospectList');
+    try {
+        const resp = await fetch('/api/prospects');
+        const data = await resp.json();
+        const prospects = data.prospects || [];
+
+        if (!prospects.length) {
+            container.innerHTML = '<div class="empty-state"><p>Nog geen prospects. Plak tekst hierboven om te beginnen.</p></div>';
+            return;
+        }
+
+        container.innerHTML = '<h3 style="margin-bottom:0.75rem;">Pipeline (' + prospects.length + ')</h3>' +
+            prospects.map(p => {
+                const scoreClass = p.ai_score >= 60 ? 'high' : p.ai_score >= 30 ? 'mid' : 'low';
+                return `
+                <div class="prospect-card">
+                    <div class="prospect-score-badge ${scoreClass}" style="width:40px;height:40px;font-size:0.85rem;">${p.ai_score}</div>
+                    <div class="prospect-card-info">
+                        <h4>${escapeHtml(p.company_name)}${p.contact_name ? ' — ' + escapeHtml(p.contact_name) : ''}</h4>
+                        <p>${escapeHtml(p.ai_summary || '')} ${p.contact_title ? '| ' + escapeHtml(p.contact_title) : ''}</p>
+                    </div>
+                    <div class="prospect-card-actions">
+                        <select onchange="updateProspectStatus(${p.id}, this.value)">
+                            ${['new','contacted','meeting','proposal','won','lost'].map(s =>
+                                `<option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>`
+                            ).join('')}
+                        </select>
+                        <button class="kanban-btn delete" onclick="deleteProspectCard(${p.id})" title="Verwijder">\u2715</button>
+                    </div>
+                </div>`;
+            }).join('');
+    } catch (err) {
+        container.innerHTML = '<div class="empty-state"><p>Kan prospects niet laden.</p></div>';
+    }
+}
+
+async function updateProspectStatus(id, status) {
+    try {
+        await fetch(`/api/prospects/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+    } catch (err) {
+        console.error('Failed to update prospect:', err);
+    }
+}
+
+async function deleteProspectCard(id) {
+    if (!confirm('Prospect verwijderen?')) return;
+    try {
+        await fetch(`/api/prospects/${id}`, { method: 'DELETE' });
+        loadProspectList();
+    } catch (err) {
+        console.error('Failed to delete prospect:', err);
+    }
 }

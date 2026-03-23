@@ -32,6 +32,9 @@
         <button class="nav-tab" data-view="kanban" id="tabKanban">
             <span id="tabKanbanText">Kanban Board</span>
         </button>
+        <button class="nav-tab" data-view="prospects" id="tabProspects">
+            <span id="tabProspectsText">+ Kandidaat</span>
+        </button>
     </nav>
 
     <!-- Stats -->
@@ -180,6 +183,87 @@
                 </div>
                 <div class="kanban-cards" id="cardsRejected"></div>
             </div>
+        </div>
+    </section>
+
+    <!-- Prospect Add View (hidden by default) -->
+    <section class="prospect-view" id="prospectView" style="display:none;">
+        <div class="prospect-container">
+            <h2 id="prospectTitle">Kandidaat Toevoegen</h2>
+
+            <div class="prospect-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label id="lblSourceType">Bron type</label>
+                        <select id="prospectSourceType" class="filter-select">
+                            <option value="website">Website tekst</option>
+                            <option value="article">Artikel</option>
+                            <option value="vacancy">Vacature</option>
+                            <option value="linkedin_post">LinkedIn post</option>
+                            <option value="other">Anders</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:2">
+                        <label id="lblSourceUrl">Bron URL (optioneel)</label>
+                        <input type="url" id="prospectSourceUrl" class="filter-select" placeholder="https://..." style="width:100%">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label id="lblCompanyName">Bedrijfsnaam (optioneel, wordt gedetecteerd)</label>
+                    <input type="text" id="prospectCompanyName" class="filter-select" placeholder="Example BV" style="width:100%">
+                </div>
+
+                <div class="form-group">
+                    <label id="lblSourceText">Plak hier de tekst</label>
+                    <textarea id="prospectSourceText" class="prospect-textarea" rows="8"
+                        placeholder="Plak hier de website tekst, artikel, vacature of LinkedIn post..."></textarea>
+                </div>
+
+                <button id="btnAnalyse" class="btn-scrape" style="width:100%;justify-content:center;">
+                    &#x1F50D; <span id="btnAnalyseText">Analyseer</span>
+                </button>
+            </div>
+
+            <!-- Analysis results (hidden until analysed) -->
+            <div id="prospectResults" style="display:none;">
+                <div class="prospect-results-header">
+                    <div class="prospect-score-badge" id="prospectScoreBadge">0</div>
+                    <div>
+                        <h3 id="prospectCompanyResult">—</h3>
+                        <p id="prospectSummary" class="prospect-summary">—</p>
+                    </div>
+                    <span class="tag" id="prospectPriorityTag">MEDIUM</span>
+                </div>
+
+                <div class="prospect-signals" id="prospectSignals"></div>
+
+                <div class="prospect-contacts" id="prospectContacts"></div>
+
+                <p class="prospect-approach" id="prospectApproach"></p>
+
+                <!-- Optional contact info -->
+                <h4 id="lblAddContact">Contact toevoegen (optioneel)</h4>
+                <div class="form-row">
+                    <input type="text" id="prospectContactName" class="filter-select" placeholder="Naam" style="flex:1">
+                    <input type="text" id="prospectContactTitle" class="filter-select" placeholder="Functie" style="flex:1">
+                </div>
+                <div class="form-row">
+                    <input type="email" id="prospectContactEmail" class="filter-select" placeholder="Email" style="flex:1">
+                    <input type="url" id="prospectContactLinkedin" class="filter-select" placeholder="LinkedIn URL" style="flex:1">
+                </div>
+                <div class="form-group">
+                    <label id="lblNotes">Notities</label>
+                    <textarea id="prospectNotes" class="prospect-textarea" rows="3" placeholder="Extra notities..."></textarea>
+                </div>
+
+                <button id="btnSaveProspect" class="btn-scrape" style="width:100%;justify-content:center;background:var(--score-high);">
+                    &#x2714; <span id="btnSaveText">Toevoegen aan Pipeline</span>
+                </button>
+            </div>
+
+            <!-- Saved prospects list -->
+            <div id="prospectList" style="margin-top:2rem;"></div>
         </div>
     </section>
 

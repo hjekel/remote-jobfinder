@@ -18,7 +18,9 @@ from app.models import (
     get_jobs, get_job_stats, init_db,
     get_kanban_cards, add_kanban_card, move_kanban_card,
     update_kanban_notes, delete_kanban_card,
+    add_prospect, get_prospects, update_prospect_status, delete_prospect,
 )
+from app.prospect_analyzer import analyse_prospect
 from app.scrapers.remoteok import scrape_remoteok
 from app.scrapers.weworkremotely import scrape_weworkremotely
 from app.scrapers.remoteco import scrape_remoteco
@@ -178,4 +180,80 @@ async def api_kanban_notes(card_id: int, req: KanbanNotesRequest):
 async def api_kanban_delete(card_id: int):
     """Remove a card from the Kanban board."""
     await delete_kanban_card(card_id)
+    return {"status": "deleted"}
+
+
+# --- Manual Prospects API ---
+
+class ProspectAnalyseRequest(BaseModel):
+    source_text: str
+    source_type: str = "other"
+    source_url: str = ""
+    company_name: str = ""
+
+class ProspectAddRequest(BaseModel):
+    company_name: str
+    company_website: str = ""
+    contact_name: str = ""
+    contact_title: str = ""
+    contact_email: str = ""
+    contact_linkedin: str = ""
+    source_type: str = "other"
+    source_url: str = ""
+    source_text: str = ""
+    ai_summary: str = ""
+    ai_score: int = 0
+    ai_signals: str = ""
+    suggested_approach: str = ""
+    category: str = "ai_automation"
+    priority: str = "medium"
+    notes: str = ""
+
+class ProspectStatusRequest(BaseModel):
+    status: str
+    notes: str | None = None
+
+
+@app.post("/api/prospects/analyse")
+async def api_prospect_analyse(req: ProspectAnalyseRequest):
+    """Analyse pasted text for AI/automation fit signals."""
+    result = analyse_prospect(
+        source_text=req.source_text,
+        source_type=req.source_type,
+        source_url=req.source_url,
+        company_name=req.company_name,
+    )
+    return result
+
+
+@app.post("/api/prospects")
+async def api_prospect_add(req: ProspectAddRequest):
+    """Add a manually analysed prospect to the pipeline."""
+    import json
+    data = req.model_dump()
+    # Ensure ai_signals is stored as JSON string
+    if isinstance(data.get("ai_signals"), list):
+        data["ai_signals"] = json.dumps(data["ai_signals"])
+    prospect_id = await add_prospect(data)
+    return {"status": "created", "id": prospect_id}
+
+
+@app.get("/api/prospects")
+async def api_prospect_list(status: str | None = Query(None)):
+    """Get all manual prospects, optionally filtered by status."""
+    prospects = await get_prospects(status)
+    return {"prospects": prospects, "count": len(prospects)}
+
+
+@app.put("/api/prospects/{prospect_id}/status")
+async def api_prospect_update(prospect_id: int, req: ProspectStatusRequest):
+    """Update a prospect's status."""
+    await update_prospect_status(prospect_id, req.status, req.notes)
+    return {"status": "updated"}
+
+
+@app.delete("/api/prospects/{prospect_id}")
+async def api_prospect_delete(prospect_id: int):
+    """Remove a prospect from the pipeline."""
+    await delete_prospect(prospect_id)
     return {"status": "deleted"}

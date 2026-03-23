@@ -770,6 +770,214 @@ body {
     border-top: 1px solid var(--border);
 }
 
+/* ---- Prospect Add View ---- */
+.prospect-view {
+    padding: 1rem 2rem 2rem;
+}
+
+.prospect-container {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.prospect-container h2 {
+    margin-bottom: 1rem;
+    color: var(--accent);
+}
+
+.prospect-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+}
+
+.form-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.prospect-textarea {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border var(--transition);
+}
+
+.prospect-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.prospect-results-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0 1rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.prospect-score-badge {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: white;
+    background: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.prospect-score-badge.high { background: var(--score-high); }
+.prospect-score-badge.mid { background: var(--planbit-oranje); }
+.prospect-score-badge.low { background: var(--text-muted); }
+
+.prospect-summary {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+
+.prospect-signals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.signal-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.signal-name {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.signal-score {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--score-high);
+    white-space: nowrap;
+}
+
+.signal-quote {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prospect-contacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.contact-suggestion {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+.contact-suggestion strong {
+    color: var(--accent);
+}
+
+.prospect-approach {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border-left: 3px solid var(--planbit-oranje);
+    margin: 0.5rem 0 1rem;
+}
+
+/* Prospect pipeline cards */
+.prospect-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: all var(--transition);
+}
+
+.prospect-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.prospect-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.prospect-card-info h4 {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+}
+
+.prospect-card-info p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.prospect-card-actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.prospect-card-actions select {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .kanban-board {
