@@ -24,6 +24,7 @@ from app.scrapers.weworkremotely import scrape_weworkremotely
 from app.scrapers.remoteco import scrape_remoteco
 from app.scrapers.jobspresso import scrape_jobspresso
 from app.scrapers.workingnomads import scrape_workingnomads
+from app.scrapers.thehub import scrape_thehub
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ ALL_SCRAPERS = [
     ("Himalayas", scrape_remoteco),
     ("Jobspresso", scrape_jobspresso),
     ("WorkingNomads", scrape_workingnomads),
+    ("TheHub", scrape_thehub),
 ]
 
 
